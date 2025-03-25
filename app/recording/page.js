@@ -1,6 +1,7 @@
 'use client'
 import { useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
+import { Mic, StopCircle } from 'lucide-react'
 
 export default function RecordingPage() {
   const searchParams = useSearchParams()
@@ -12,18 +13,14 @@ export default function RecordingPage() {
   const animationRef = useRef(null)
 
   const startMic = async () => {
-    if (typeof window === 'undefined' || !navigator.mediaDevices) {
-      console.warn('Browser does not support mediaDevices')
-      return
-    }
+    if (typeof window === 'undefined' || !navigator.mediaDevices) return
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-      const source = audioContext.createMediaStreamSource(stream)
-      const analyser = audioContext.createAnalyser()
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)()
+      const source = audioCtx.createMediaStreamSource(stream)
+      const analyser = audioCtx.createAnalyser()
       analyser.fftSize = 256
-
       const dataArray = new Uint8Array(analyser.frequencyBinCount)
       source.connect(analyser)
 
@@ -36,7 +33,7 @@ export default function RecordingPage() {
 
       animate()
     } catch (err) {
-      console.error('Failed to access microphone:', err)
+      console.error('🎤 마이크 접근 실패:', err)
     }
   }
 
@@ -55,33 +52,46 @@ export default function RecordingPage() {
     }
   }
 
+  const dynamicSize = volume * 3 // 기본 크기 + 볼륨 반응
+
   return (
-    <div className="h-screen flex flex-col justify-center items-center text-center px-6 bg-white">
-      <p className="mb-6 text-lg">
-        {isRecording ? '녹음 중이에요... 말해보세요!' : '시작하려면 버튼을 눌러주세요'}
+    <div className="h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-br from-indigo-100 to-purple-200 relative overflow-hidden">
+      <p className="mb-8 text-xl font-semibold text-gray-800">
+        {isRecording ? '듣고 있어요... 더 말해보세요!' : '시작하려면 버튼을 눌러주세요'}
       </p>
 
-      <button
-        onClick={handleToggle}
-        className="relative w-32 h-32 flex items-center justify-center"
-      >
+      <div className="relative w-40 h-40 flex items-center justify-center">
+        {/* 볼륨 반응 원 */}
         {isRecording && (
           <div
-            className="absolute rounded-full bg-green-400 opacity-70 transition-all duration-100"
+            className="absolute rounded-full bg-green-500 opacity-80 blur-sm transition-all duration-200 ease-out"
             style={{
-              width: `${volume + 50}px`,
-              height: `${volume + 50}px`,
+              width: `${dynamicSize}px`,
+              height: `${dynamicSize}px`,
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 0,
             }}
           />
         )}
-        <div
-          className={`relative z-10 w-16 h-16 rounded-full text-white text-2xl flex items-center justify-center shadow-md ${
-            isRecording ? 'bg-red-500' : 'bg-black'
-          }`}
-        >
-          {isRecording ? '⏹️' : '🎙️'}
-        </div>
-      </button>
+
+        {/* 마이크 버튼 */}
+<button
+  onClick={handleToggle}
+  className={`relative z-10 w-32 h-32 rounded-full flex items-center justify-center transition-transform duration-300 shadow-md
+    ${isRecording
+      ? 'bg-red-500 hover:bg-red-600 opacity-80 brightness-95'
+      : 'bg-black hover:bg-gray-800'}
+  `}
+>
+  {isRecording ? (
+    <StopCircle className="text-white w-12 h-12" />
+  ) : (
+    <Mic className="text-white w-12 h-12" />
+  )}
+</button>
+      </div>
     </div>
   )
 }
