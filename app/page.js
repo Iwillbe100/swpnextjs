@@ -1,23 +1,14 @@
 'use client'
-import { useState } from 'react'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
 export default function Home() {
-  const [selected, setSelected] = useState(null)
-  const [otherText, setOtherText] = useState('')
+  const router = useRouter()
 
-  const options = ['조용한 음악', '신나는 음악', '감성적인 클래식', '기타 (직접 입력)']
-
-  const handleSelect = (option) => {
-    setSelected(option)
-    if (option !== '기타 (직접 입력)') {
-      setOtherText('')
-    }
-  }
-
-  const handleNext = () => {
-    const finalChoice = selected === '기타 (직접 입력)' ? otherText : selected
-    console.log('선택된 음악 취향:', finalChoice)
-    window.location.href = '/input'
+  const handleRedirect = () => {
+    // 페이지 이동
+    router.push('/input')
   }
 
   return (
@@ -25,42 +16,16 @@ export default function Home() {
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-6 space-y-6">
         <div className="text-center">
           <p className="text-lg font-semibold mb-2">🎵 기분에 따라 맞춤 음악을 추천해드릴게요!</p>
-          <p className="text-sm text-gray-600">우울할 때 어떤 음악을 듣고 싶나요?</p>
+          <p className="text-sm text-gray-600">바로 감정 분석을 시작하고, 음악을 추천 받을 준비가 되셨나요?</p>
         </div>
 
-        <div className="space-y-3">
-          {options.map((opt) => (
-            <div
-              key={opt}
-              onClick={() => handleSelect(opt)}
-              className={`border px-4 py-2 rounded-full cursor-pointer text-sm transition-colors ${
-                selected === opt
-                  ? 'bg-black text-white'
-                  : 'bg-white text-black hover:bg-gray-100'
-              }`}
-            >
-              {opt}
-            </div>
-          ))}
-
-          {selected === '기타 (직접 입력)' && (
-            <input
-              type="text"
-              className="mt-2 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="듣고 싶은 음악을 입력하세요"
-              value={otherText}
-              onChange={(e) => setOtherText(e.target.value)}
-            />
-          )}
-        </div>
-
+        {/* 바로 다음 페이지로 넘어가는 버튼 */}
         <div className="text-center pt-4">
           <button
-            className="bg-blue-500 text-white px-6 py-2 rounded-full shadow hover:bg-blue-600 transition disabled:opacity-40"
-            onClick={handleNext}
-            disabled={!selected || (selected === '기타 (직접 입력)' && otherText.trim() === '')}
+            onClick={handleRedirect}
+            className="bg-blue-500 text-white px-6 py-2 rounded-full shadow hover:bg-blue-600 transition"
           >
-            Next →
+            감정 분석 시작 → 
           </button>
         </div>
       </div>
