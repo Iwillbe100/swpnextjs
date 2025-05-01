@@ -12,104 +12,81 @@ export default function ResultPage() {
   const [trackTitle, setTrackTitle] = useState('')
   const [artist, setArtist] = useState('')
   const [loading, setLoading] = useState(true)
-  const [trackList, setTrackList] = useState([])
+  const [trackQueries, setTrackQueries] = useState([])
   const [trackIndex, setTrackIndex] = useState(0)
 
-  const paramMap = {
+  const keywordMap = {
     슬픔: {
-      '조용한 음악으로 위로 받고 싶어요': 'acoustic',
-      '신나는 음악으로 기분 전환하고 싶어요': 'pop',
+      '조용한 음악으로 위로 받고 싶어요': ['calm sad acoustic instrumental', 'comforting slow piano'],
+      '신나는 음악으로 기분 전환하고 싶어요': ['uplifting pop for sadness', 'happy songs to cheer up'],
     },
     기쁨: {
-      '행복한 기분을 유지하고 싶어요': 'dance',
-      '조금은 차분해지고 싶어요': 'classical',
+      '행복한 기분을 유지하고 싶어요': ['happy energetic dance music', 'feel good pop hits'],
+      '조금은 차분해지고 싶어요': ['peaceful ambient music', 'soft indie relaxing'],
     },
-    피곤함: {
-      '잔잔한 음악으로 쉬고 싶어요': 'sleep',
-      '활력 있는 음악으로 깨고 싶어요': 'electronic',
+    신뢰: {
+      '믿음직한 느낌을 유지하고 싶어요': ['uplifting inspirational songs', 'confident background music'],
+      '편안한 안정감을 느끼고 싶어요': ['soothing instrumental trust music', 'calm reassuring tunes'],
     },
-    불안: {
-      '마음이 차분해지는 음악 듣고 싶어요': 'ambient',
-      '긴장감을 날려버릴 음악 듣고 싶어요': 'rock',
+    공포: {
+      '두려움을 이겨내고 싶어요': ['motivational music for fear', 'overcoming fear soundtrack'],
+      '공포의 분위기에 빠지고 싶어요': ['dark horror music', 'scary cinematic soundtracks'],
     },
-  }
-
-  const selectedGenre = paramMap[emotion]?.[response] || 'pop'
-
-  const getToken = async () => {
-    const res = await fetch('https://accounts.spotify.com/api/token', {
-      method: 'POST',
-      headers: {
-        Authorization: 'Basic ' + btoa(`${process.env.NEXT_PUBLIC_SPOTIFY_ID}:${process.env.NEXT_PUBLIC_SPOTIFY_SECRET}`),
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: 'grant_type=client_credentials',
-    })
-    const data = await res.json()
-    return data.access_token
-  }
-
-  const fetchTrack = async () => {
-    try {
-      const token = await getToken()
-      const res = await fetch(
-        `https://api.spotify.com/v1/search?q=${encodeURIComponent(selectedGenre)}&type=track&market=US&limit=10`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      )
-
-      if (!res.ok) {
-        console.error('[❌ Spotify 검색 실패]', res.status)
-        return null
-      }
-
-      const data = await res.json()
-      const tracks = data.tracks.items
-      setTrackList(tracks)
-      return tracks
-    } catch (err) {
-      console.error('⚠️ Spotify 처리 중 오류:', err)
+    놀람: {
+      '흥미로운 음악으로 놀람을 즐기고 싶어요': ['interesting music', 'surprising upbeat playlist'],
+      '차분한 음악으로 진정하고 싶어요': ['relaxing music', 'calm soothing ambient'],
+    },
+    혐오: {
+      '불쾌한 감정을 정화하고 싶어요': ['cleansing ambient music', 'healing instrumental'],
+      '감정을 날려버릴 강한 음악이 듣고 싶어요': ['intense rock metal', 'angry punk playlist'],
+    },
+    분노: {
+      '격한 감정을 분출하고 싶어요': ['rage music playlist', 'aggressive workout songs'],
+      '차분함을 되찾고 싶어요': ['calming anger relief music', 'soft instrumental for stress'],
+    },
+    기대: {
+      '기대되는 마음을 더 북돋우고 싶어요': ['hopeful cinematic music', 'inspiring orchestral tracks'],
+      '기대감을 잠시 가라앉히고 싶어요': ['light ambient waiting music', 'subtle anticipation background'],
     }
-    return []
   }
+  const keywords = keywordMap[emotion]?.[response] || ['modern music']
 
   const fetchYouTubeVideo = async (query) => {
-    try {
-      const res = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&q=${encodeURIComponent(query)}&key=${process.env.NEXT_PUBLIC_YOUTUBE_API_KEY}`
-      )
-      const data = await res.json()
-      const video = data.items?.[0]
-      if (video?.id?.videoId) {
-        setVideoId(video.id.videoId)
-      }
-    } catch (err) {
-      console.error('⚠️ YouTube 검색 오류:', err)
+    console.log(query)
+    const res = await fetch(
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&q=${encodeURIComponent(query)}&key=${process.env.NEXT_PUBLIC_YOUTUBE_API_KEY}`
+    )
+    const data = await res.json()
+    const video = data.items?.[0]
+    if (video?.id?.videoId) {
+      setVideoId(video.id.videoId)
+      setTrackTitle(video.snippet.title)
+      setArtist(video.snippet.channelTitle)
     }
   }
 
+  // 감정/반응 바뀌면 쿼리 초기화
   useEffect(() => {
-    const load = async () => {
-      setLoading(true)
-      const tracks = await fetchTrack()
-      if (tracks?.length) {
-        await fetchYouTubeVideo(`${tracks[0].name} ${tracks[0].artists[0].name}`)
-        setTrackTitle(tracks[0].name)
-        setArtist(tracks[0].artists[0].name)
-      }
-      setLoading(false)
-    }
-    load()
+    setTrackQueries(keywords)
+    setTrackIndex(0)
   }, [emotion, response])
+
+  // 쿼리 or 인덱스 바뀌면 fetch 실행
+  useEffect(() => {
+    const loadTrack = async () => {
+      if (trackQueries.length > 0) {
+        setLoading(true)
+        await fetchYouTubeVideo(trackQueries[trackIndex])
+        setLoading(false)
+      }
+    }
+    loadTrack()
+  }, [trackQueries, trackIndex])
 
   const handleNextTrack = async () => {
     const nextIndex = trackIndex + 1
-    if (nextIndex < trackList.length) {
+    if (nextIndex < trackQueries.length) {
       setTrackIndex(nextIndex)
-      await fetchYouTubeVideo(`${trackList[nextIndex].name} ${trackList[nextIndex].artists[0].name}`)
-      setTrackTitle(trackList[nextIndex].name)
-      setArtist(trackList[nextIndex].artists[0].name)
     }
   }
 
@@ -124,13 +101,6 @@ export default function ResultPage() {
         <p className="text-sm text-gray-500">추천 음악을 불러오는 중...</p>
       ) : videoId ? (
         <>
-          {/* 앨범 사진 */}
-          {/* <img
-            src={trackList[trackIndex]?.album?.images?.[0]?.url}
-            alt="cover"
-            className="w-48 h-48 rounded-full mb-6 shadow-lg"
-          /> */}
-
           <iframe
             width="640"
             height="360"
@@ -140,17 +110,14 @@ export default function ResultPage() {
             allowFullScreen
             className="rounded-lg shadow-lg mb-6"
           />
-
           <p className="text-lg text-gray-700 font-semibold mb-2">{trackTitle}</p>
           <p className="text-sm text-gray-500 mb-4">by {artist}</p>
-          {/* 다음 곡 버튼 */}
-          {trackIndex < trackList.length - 1 && (
+          {trackIndex < trackQueries.length - 1 && (
             <button
               onClick={handleNextTrack}
-              className="mt-4 text-sm text-white bg-gray-200 px-6 py-2 rounded-full shadow-md hover:bg-gray-300 transition"
+              className="mt-4 text-sm bg-white text-gray-700 px-6 py-2 rounded-full shadow-md hover:bg-gray-100 transition"
             >
-              
-              <h5 className="text-gray-700 font-semibold">NEXT</h5>
+              ⏭️ 다음 곡
             </button>
           )}
         </>
