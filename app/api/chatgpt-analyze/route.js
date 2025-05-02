@@ -3,35 +3,10 @@ import { NextResponse } from 'next/server'
 export async function POST(req) {
   try {
     const { transcript } = await req.json()
+    console.log("TRACSCRIPT : ", transcript)
 
     // 🧠 프롬프트 구성 (정확도 향상용)
-    const prompt = `
-당신은 감정 분석 전문가입니다. 다음 문장에서 사용자의 감정을 분석하세요.
-아래 8가지 감정 중 문맥에 가장 적절한 **하나만** 선택해 주세요:
-
-[기쁨, 신뢰, 공포, 놀람, 슬픔, 혐오, 분노, 기대]
-
-규칙:
-- 항상 이 중 하나만 선택하세요.
-- 중복 금지.
-- 문장에 행복, 좋다, 즐겁다, 만족 등 긍정 표현이 있으면 반드시 "기쁨"을 선택하세요.
-- "놀람"은 평소에는 사용하지 않습니다. 문장에 놀랐어 라는 단어가 있을때 선택하세요.
-- "혐오"는 평소에 사용하지 않습니다. 싫었어 라는 단어가 있을때 선택하세요.
-
-예시:
-"기분이 좋아요" → 기쁨
-"기대돼" → 기대
-"짜증나고 화가 나" → 분노
-"너무 싫었어" → 혐오
-"무서워 죽겠어" → 공포
-"놀랐어" → 놀람
-
-반드시 다음 JSON 형식으로만 응답하세요:
-{ "emotion": "기쁨" }
-
-
-문장: "${transcript}"
-`
+    const prompt = `문장: "${transcript}"`
 
     const chatRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -42,10 +17,30 @@ export async function POST(req) {
       body: JSON.stringify({
         model: 'gpt-3.5-turbo',
         messages: [
-          { role: 'system', content: '당신은 감정 분석 전문가입니다.' },
+          { role: 'system', 
+          content: `📌 당신은 감정 분석 전문가입니다.
+다음 문장에서 사용자의 감정을 아래 8가지 중 **정확히 하나만** 분석하세요:
+
+[기쁨, 신뢰, 공포, 놀람, 슬픔, 혐오, 분노, 기대]
+
+🔒 규칙:
+- 반드시 위 목록에서 **하나만** 선택 (중복 없음)
+- 긍정 표현(기쁘다, 좋다 등)이 있으면 무조건 "기쁨"
+- "놀람"은 "놀랐어" 포함 시에만 선택
+- "혐오"는 "싫었어" 포함 시에만 선택
+
+🧪 예시:
+"짜증나고 화가 나" → 분노
+"너무 싫었어" → 혐오
+"기대돼" → 기대
+"무서워 죽겠어" → 공포
+
+🎯 반드시 이 JSON 형식으로 응답하세요:
+{ "emotion": "기쁨" }`
+        },
           { role: 'user', content: prompt },
         ],
-        temperature: 0.3,
+        temperature: 0.2,
       }),
     })
 

@@ -12,7 +12,7 @@ export default function InputPage() {
   const animationRef = useRef(null)
 
   const startSpeechRecognition = () => {
-    if (isListening) return // 중복 방지
+    if (isListening) return
 
     if (!('webkitSpeechRecognition' in window)) {
       alert('이 브라우저는 음성 인식을 지원하지 않습니다.')
@@ -25,14 +25,20 @@ export default function InputPage() {
     recognition.maxAlternatives = 1
 
     recognition.onresult = async (event) => {
-      const result = event.results[0][0].transcript
+      const result = event.results?.[0]?.[0]?.transcript || ''
+      console.log('%c🎤 음성 인식 결과:', 'color:blue; font-weight:bold', result)
+
+      if (!result) {
+        console.warn('⚠️ 인식된 문장이 없음 → 분석 생략')
+        return
+      }
+
       setTranscript(result)
-      console.log('🎤 인식 결과:', result)
       await analyzeEmotionWithChatGPT(result)
     }
 
     recognition.onerror = (event) => {
-      console.error('음성 인식 오류:', event.error)
+      console.error('❌ 음성 인식 오류:', event.error)
     }
 
     recognitionRef.current = recognition
@@ -59,26 +65,38 @@ export default function InputPage() {
       }
       animate()
     } catch (err) {
-      console.error('마이크 접근 실패:', err)
+      console.error('❌ 마이크 접근 실패:', err)
     }
   }
 
   const analyzeEmotionWithChatGPT = async (text) => {
+    if (!text || typeof text !== 'string' || text.trim() === '') {
+      console.warn('⚠️ 감정 분석 생략: 비어있는 입력')
+      return
+    }
+
+    console.log('%c📤 서버로 보낼 transcript:', 'color:green; font-weight:bold', text)
+
     try {
       const res = await fetch('/api/chatgpt-analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ transcript: text }), // ✅ 중요!
       })
 
       const data = await res.json()
+      console.log('%c📥 서버 응답 데이터:', 'color:purple; font-weight:bold', data)
+
       const emotion = data.emotion?.trim()
-      console.log('감정 분석 결과:', emotion)
+      console.log('🧠 감정 분석 결과:', emotion)
+
       if (emotion) {
         router.push(`/response?emotion=${encodeURIComponent(emotion)}`)
+      } else {
+        console.warn('⚠️ 감정 분석 실패: emotion 없음')
       }
     } catch (e) {
-      console.error('감정 분석 요청 실패:', e)
+      console.error('❌ 감정 분석 요청 실패:', e)
     }
   }
 

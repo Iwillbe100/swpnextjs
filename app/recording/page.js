@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 
 export default function RecordingPage() {
   const router = useRouter()
@@ -39,9 +39,31 @@ export default function RecordingPage() {
     recognition.maxAlternatives = 1
 
     recognition.onresult = async (event) => {
-      const result = event.results[0][0].transcript
+      console.log('%c🧪 onresult 발생', 'color:blue; font-weight:bold')
+      console.log('🧪 event.results:', event.results)
+      console.log('🧪 map된 transcript:', Array.from(event.results).map(r => r[0]?.transcript))
+
+      let result = ''
+      try {
+        const transcripts = Array.from(event.results)
+          .map(r => r[0]?.transcript || '')
+          .filter(Boolean)
+
+        result = transcripts.join(' ').trim()
+
+        console.log('🧾 추출된 transcripts 배열:', transcripts)
+        console.log('🧾 최종 result:', result)
+      } catch (err) {
+        console.error('❌ 음성 결과 파싱 오류:', err)
+      }
+
+      if (!result) {
+        console.warn('❗ 인식된 문장이 없음 → 분석 생략')
+        cancelAnimationFrame(animationRef.current)
+        return
+      }
+
       setTranscript(result)
-      console.log('🎤 인식 결과:', result)
       cancelAnimationFrame(animationRef.current)
       await analyzeEmotionWithChatGPT(result)
     }
@@ -56,18 +78,37 @@ export default function RecordingPage() {
   }
 
   const analyzeEmotionWithChatGPT = async (text) => {
-    const res = await fetch('/api/chatgpt-analyze', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ transcript: text }),
-    })
-    const data = await res.json()
-    const emotion = data.emotion?.trim()
-    console.log('감정 분석 결과:', emotion)
-    router.push(`/response?emotion=${encodeURIComponent(emotion)}`)
+    if (!text || typeof text !== 'string' || text.trim() === '') {
+      console.warn('❗ 감정 분석 생략: 비어있는 입력')
+      return
+    }
+
+    console.log('%c🎤 분석 요청할 텍스트:', 'color:green; font-weight:bold', text)
+
+    try {
+      const res = await fetch('/api/chatgpt-analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transcript: text }),
+      })
+
+      const data = await res.json()
+      console.log('%c🧠 API 응답:', 'color:purple; font-weight:bold', data)
+
+      const emotion = data.emotion?.trim()
+      console.log('감정 분석 결과:', emotion)
+
+      if (emotion) {
+        router.push(`/response?emotion=${encodeURIComponent(emotion)}`)
+      } else {
+        console.warn('❗ 감정 분석 실패: emotion 없음')
+      }
+    } catch (err) {
+      console.error('❌ 감정 분석 요청 실패:', err)
+    }
   }
 
-  const micSize = 128 + volume * 0.8 // mic animation 반응형 크기
+  const micSize = 128 + volume * 0.8
 
   return (
     <div className="h-screen flex flex-col items-center justify-center px-6 text-center bg-gradient-to-br from-indigo-100 to-purple-200">
